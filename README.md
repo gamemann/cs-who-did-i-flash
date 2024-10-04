@@ -2,7 +2,7 @@ A [SourceMod](https://www.sourcemod.net/) plugin for [Counter-Strike: Source](ht
 
 ![Preview](./preview/preview01.gif)
 
-## Configuration && ConVars
+## Configuration & ConVars
 The plugin automatically generates a config file to `cfg/sourcemod/plugin.wdif.cfg`.
 
 Here is a list of ConVars.
