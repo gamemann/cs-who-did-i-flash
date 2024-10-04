@@ -76,6 +76,11 @@ wdif_team_announce_names "1"
 wdif_version "1.0.0"
 ```
 
+## Command(s)
+There's only one command included in the plugin which is `wdif` (in chat, prefix with `!` or `/` and through console, prefix with `sm_`).
+
+This opens a menu where the client can enable/disable team and enemy notifications specifically which is then stored in a cookie so it saves on map change/server restart!
+
 ## Building
 On Linux, you may use the [`build.sh`](./build.sh) Bash script I made to build the plugin's source code to the [`build/`](./build) directory. Make sure to change the `SM_DIR` environmental variable to the path to your SourceMod's scripting directory (default path is set to `/opt/sourcemod/addons/sourcemod/scripting`).
 

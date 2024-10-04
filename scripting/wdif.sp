@@ -1,5 +1,7 @@
 #include <sourcemod>
 #include <sdktools>
+#include <clientprefs>
+
 #include <cstrike>
 
 //#define USE_COLORS
@@ -53,6 +55,13 @@ bool gCreateBeam;
 float gBeamLife;
 float gBeamWidth;
 
+// Cookies
+Handle gCDisableTeam = null;
+Handle gCDisableEnemy = null;
+
+bool gDisableTeam[MAXPLAYERS+1];
+bool gDisableEnemy[MAXPLAYERS+1];
+
 public void OnPluginStart() {
     // ConVars.
     gCvEnabled = CreateConVar("wdif_enabled", "1", "Whether to enable the Who Did I Flash plugin.", _, true, 0.0, true, 1.0);
@@ -92,6 +101,21 @@ public void OnPluginStart() {
 
     // Load config,
     AutoExecConfig(true, "plugin.wdif");
+
+    // Commands.
+    RegConsoleCmd("sm_wdif", Command_WDIF, "The WDIF menu.");
+
+    // Load cookies.
+    gCDisableTeam = RegClientCookie("wdif_disable_team", "Disables WDIF team notifications.", CookieAccess_Public);
+    gCDisableEnemy = RegClientCookie("wdif_disable_enemy", "Disables WDIF enemy notifications.", CookieAccess_Public);
+
+    // Cookie late loading.
+    for (int i = 1; i <= MaxClients; i++) {
+        if (!AreClientCookiesCached(i))
+            continue;
+
+        OnClientCookiesCached(i);
+    }
 }
 
 void SetCVars() {
@@ -131,6 +155,97 @@ void BPrintToChat(int client, const char[] msg, any...) {
 #endif
 }
 
+public void OnClientCookiesCached(int client) {
+    char val[8];
+
+    // Check disable team.
+    GetClientCookie(client, gCDisableTeam, val, sizeof(val));
+
+    gDisableTeam[client] = val[0] != '\0' && StringToInt(val) > 0;
+
+    // Check disable enemy.
+    GetClientCookie(client, gCDisableEnemy, val, sizeof(val));
+
+    gDisableEnemy[client] = val[0] != '\0' && StringToInt(val) > 0;
+}
+
+public int WDIFMenuHandler(Menu m, MenuAction action, int client, int param2) {
+    switch (action) {
+        case MenuAction_Select: {
+            // Get item info.
+            char buffer[MAX_NAME_LENGTH];
+            m.GetItem(param2, buffer, sizeof(buffer));
+
+            // Check for team.
+            if(strcmp(buffer, "team", false) == 0) {
+                if (gDisableTeam[client]) {
+                    gDisableTeam[client] = false;
+                    SetClientCookie(client, gCDisableTeam, "0");
+                } else {
+                    gDisableTeam[client] = true;
+                    SetClientCookie(client, gCDisableTeam, "1");
+                }
+            } else if (strcmp(buffer, "enemy", false) == 0) {
+                if (gDisableEnemy[client]) {
+                    gDisableEnemy[client] = false;
+                    SetClientCookie(client, gCDisableEnemy, "0");
+                } else {
+                    gDisableEnemy[client] = true;
+                    SetClientCookie(client, gCDisableEnemy, "1");
+                }
+            }
+
+            // Rebuild menu.
+            BuildWDIFMenu(client);
+
+            return 0;
+        }
+
+        case MenuAction_End: {
+            delete m;
+        }
+    }
+    return 0;
+}
+
+void BuildWDIFMenu(int client) {
+    // We'll want to build a menu.
+    Menu m = new Menu(WDIFMenuHandler);
+
+    // Set menu title.
+    m.SetTitle("%T", "MenuTitle", LANG_SERVER);
+
+    char buffer[255];
+
+    // Format team choice.
+    if (gDisableTeam[client])
+        Format(buffer, sizeof(buffer), "%t", "MenuEnableTeam");
+    else
+        Format(buffer, sizeof(buffer), "%t", "MenuDisableTeam");
+
+    m.AddItem("team", buffer);
+
+    // Format enemy choice.
+    if (gDisableEnemy[client])
+        Format(buffer, sizeof(buffer), "%t", "MenuEnableEnemy");
+    else
+        Format(buffer, sizeof(buffer), "%t", "MenuDisableEnemy");
+
+    m.AddItem("enemy", buffer);
+
+    // Include exit button.
+    m.ExitButton = true;
+
+    // Display menu to client.
+    m.Display(client, -1);
+}
+
+public Action Command_WDIF(int client, int args) {
+    BuildWDIFMenu(client);
+
+    return Plugin_Handled;
+}
+
 public Action Event_FlashbangDetonate(Event ev, const char[] name, bool dontBroadcast) {
     // Check if we're enabled.
     if (!gEnabled)
@@ -141,6 +256,10 @@ public Action Event_FlashbangDetonate(Event ev, const char[] name, bool dontBroa
 
     // Check thrower.
     if (!IsClientInGame(thrower))
+        return Plugin_Continue;
+
+    // If notifications are disabled entirely, just ignore.
+    if (gDisableTeam[thrower] && gDisableEnemy[thrower])
         return Plugin_Continue;
 
     // Get thrower team.
@@ -167,10 +286,10 @@ public Action Event_FlashbangDetonate(Event ev, const char[] name, bool dontBroa
         int plTeam = GetClientTeam(i);
 
         // Check team.
-        if (!gTeam && plTeam == team)
+        if (plTeam == team && (!gTeam || gDisableTeam[thrower]))
             continue;
 
-        if (!gEnemy && plTeam != team)
+        if (plTeam != team && (!gEnemy | gDisableEnemy[thrower]))
             continue;
 
         // Get player origin.
