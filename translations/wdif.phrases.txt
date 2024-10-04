@@ -1,0 +1,22 @@
+"Phrases"
+{
+    "Tag"
+    {
+        "en"                "[WDIF]"
+    }
+    "ClAnnounceTeam"
+    {
+        "#format"           "{1:s},{2:.2f}"
+        "en"                "You flashed your teammate, {1}, for {2} seconds!"
+    }
+    "ClAnnounceEnemy"
+    {
+        "#format"           "{1:s},{2:.2f}"
+        "en"                "You flashed the enemy, {1}, for {2} seconds!"
+    }
+    "Announce"
+    {
+        "#format"           "{1:d},{2:d}"
+        "en"                "You flashed {1} teammates and {2} enemies with your flash grenade!"
+    }
+}
