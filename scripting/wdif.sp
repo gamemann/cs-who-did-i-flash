@@ -56,8 +56,8 @@ float gBeamLife;
 float gBeamWidth;
 
 // Cookies
-Handle gCDisableTeam = null;
-Handle gCDisableEnemy = null;
+Cookie gCDisableTeam = null;
+Cookie gCDisableEnemy = null;
 
 bool gDisableTeam[MAXPLAYERS+1];
 bool gDisableEnemy[MAXPLAYERS+1];
@@ -65,31 +65,31 @@ bool gDisableEnemy[MAXPLAYERS+1];
 public void OnPluginStart() {
     // ConVars.
     gCvEnabled = CreateConVar("wdif_enabled", "1", "Whether to enable the Who Did I Flash plugin.", _, true, 0.0, true, 1.0);
-    HookConVarChange(gCvEnabled, CVar_Changed);
+    gCvEnabled.AddChangeHook(CVar_Changed);
 
     gCvMaxDistance = CreateConVar("wdif_max_distance", "6000.0", "The maximum distance from the flash detonation to check users.", _, true, 0.0);
-    HookConVarChange(gCvMaxDistance, CVar_Changed);
+    gCvMaxDistance.AddChangeHook(CVar_Changed);
 
     gCvTeam = CreateConVar("wdif_team", "1", "Notify flashbang thrower of teammates they've flashed", _, true, 0.0, true, 1.0);
-    HookConVarChange(gCvTeam, CVar_Changed);
+    gCvTeam.AddChangeHook(CVar_Changed);
 
     gCvTeamAnnounceNames = CreateConVar("wdif_team_announce_names", "1", "Announce teammate names.", _, true, 0.0, true, 1.0);
-    HookConVarChange(gCvTeamAnnounceNames, CVar_Changed);
+    gCvTeamAnnounceNames.AddChangeHook(CVar_Changed);
 
     gCvEnemy = CreateConVar("wdif_enemy", "1", "Notify flashbang thrower of enemies they've flashed.", _, true, 0.0, true, 1.0);
-    HookConVarChange(gCvEnemy, CVar_Changed);
+    gCvEnemy.AddChangeHook(CVar_Changed);
 
     gCvEnemyAnnounceNames = CreateConVar("wdif_enemy_announce_names", "1", "Announce enemy names.", _, true, 0.0, true, 1.0);
-    HookConVarChange(gCvEnemyAnnounceNames, CVar_Changed);
+    gCvEnemyAnnounceNames.AddChangeHook(CVar_Changed);
 
     gCvCreateBeam = CreateConVar("wdif_create_beam", "0", "If 1, creates a temporary beam. Used for debugging", _, true, 0.0, true, 1.0);
-    HookConVarChange(gCvCreateBeam, CVar_Changed);
+    gCvCreateBeam.AddChangeHook(CVar_Changed);
 
     gCvBeamLife = CreateConVar("wdif_beam_life", "5.0", "The beam lifetime in seconds.");
-    HookConVarChange(gCvBeamLife, CVar_Changed);
+    gCvBeamLife.AddChangeHook(CVar_Changed);
 
     gCvBeamWidth = CreateConVar("wdif_beam_width", "2.0", "The beam width.");
-    HookConVarChange(gCvBeamWidth, CVar_Changed);
+    gCvBeamWidth.AddChangeHook(CVar_Changed);
 
     CreateConVar("wdif_version", PL_VERSION, "The Who Did I Flash plugin's version.");
 
@@ -106,8 +106,8 @@ public void OnPluginStart() {
     RegConsoleCmd("sm_wdif", Command_WDIF, "The WDIF menu.");
 
     // Load cookies.
-    gCDisableTeam = RegClientCookie("wdif_disable_team", "Disables WDIF team notifications.", CookieAccess_Public);
-    gCDisableEnemy = RegClientCookie("wdif_disable_enemy", "Disables WDIF enemy notifications.", CookieAccess_Public);
+    gCDisableTeam = new Cookie("wdif_disable_team", "Disables WDIF team notifications.", CookieAccess_Public);
+    gCDisableEnemy = new Cookie("wdif_disable_enemy", "Disables WDIF enemy notifications.", CookieAccess_Public);
 
     // Cookie late loading.
     for (int i = 1; i <= MaxClients; i++) {
@@ -119,25 +119,25 @@ public void OnPluginStart() {
 }
 
 void SetCVars() {
-    gEnabled = GetConVarBool(gCvEnabled);
-    gMaxDistance = GetConVarFloat(gCvMaxDistance);
+    gEnabled = gCvEnabled.BoolValue;
+    gMaxDistance = gCvMaxDistance.FloatValue;
 
-    gTeam = GetConVarBool(gCvTeam);
-    gTeamAnnounceNames = GetConVarBool(gCvTeamAnnounceNames);
+    gTeam = gCvTeam.BoolValue;
+    gTeamAnnounceNames = gCvTeamAnnounceNames.BoolValue;
 
-    gEnemy = GetConVarBool(gCvEnemy);
-    gEnemyAnnounceNames = GetConVarBool(gCvEnemyAnnounceNames);
+    gEnemy = gCvEnemy.BoolValue;
+    gEnemyAnnounceNames = gCvEnemyAnnounceNames.BoolValue;
 
-    gCreateBeam = GetConVarBool(gCvCreateBeam);
-    gBeamLife = GetConVarFloat(gCvBeamLife);
-    gBeamWidth = GetConVarFloat(gCvBeamWidth);
+    gCreateBeam = gCvCreateBeam.BoolValue;
+    gBeamLife = gCvBeamLife.FloatValue;
+    gBeamWidth = gCvBeamWidth.FloatValue;
 }
 
 public void OnConfigsExecuted() {
     SetCVars();
 }
 
-public void CVar_Changed(Handle cv, const char[] oldV, const char[] newV) {
+public void CVar_Changed(ConVar cv, const char[] oldV, const char[] newV) {
     SetCVars();
 }
 
@@ -159,12 +159,12 @@ public void OnClientCookiesCached(int client) {
     char val[8];
 
     // Check disable team.
-    GetClientCookie(client, gCDisableTeam, val, sizeof(val));
+    gCDisableTeam.Get(client, val, sizeof(val));
 
     gDisableTeam[client] = val[0] != '\0' && StringToInt(val) > 0;
 
     // Check disable enemy.
-    GetClientCookie(client, gCDisableEnemy, val, sizeof(val));
+    gCDisableEnemy.Get(client, val, sizeof(val));
 
     gDisableEnemy[client] = val[0] != '\0' && StringToInt(val) > 0;
 }
@@ -180,18 +180,18 @@ public int WDIFMenuHandler(Menu m, MenuAction action, int client, int param2) {
             if(strcmp(buffer, "team", false) == 0) {
                 if (gDisableTeam[client]) {
                     gDisableTeam[client] = false;
-                    SetClientCookie(client, gCDisableTeam, "0");
+                    gCDisableTeam.Set(client, "0");
                 } else {
                     gDisableTeam[client] = true;
-                    SetClientCookie(client, gCDisableTeam, "1");
+                    gCDisableTeam.Set(client, "1");
                 }
             } else if (strcmp(buffer, "enemy", false) == 0) {
                 if (gDisableEnemy[client]) {
                     gDisableEnemy[client] = false;
-                    SetClientCookie(client, gCDisableEnemy, "0");
+                    gCDisableEnemy.Set(client, "0");
                 } else {
                     gDisableEnemy[client] = true;
-                    SetClientCookie(client, gCDisableEnemy, "1");
+                    gCDisableEnemy.Set(client, "1");
                 }
             }
 
